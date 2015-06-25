@@ -15,64 +15,86 @@ namespace Sqline.ClientFramework {
 		protected string FTableName = "";
 		protected string FSchemaName = "";
 		protected string FSqlStatement = "";
+		protected int FParameterIndex = 0;
 
-		public void Initialize(string schemaName, string tableName, SqlineConfig config) {
+		public virtual void Initialize(string schemaName, string tableName, SqlineConfig config) {
 			FSchemaName = schemaName;
 			FTableName = tableName;
 			FConfig = config;
 		}
-	
-		public int Execute() {
+
+		public virtual int Execute() {
+			using (IDbConnection OConnection = Provider.Current.GetConnection(FConfig.ConnectionString)) {
+				OConnection.Open();
+				return Execute(OConnection, null);
+			}
+		}
+
+		public virtual int Execute(IDbConnection connection, IDbTransaction transaction) {
 			FParameters.Clear();
 			PreExecute();
 			FSqlStatement = PrepareStatement();
 			int OResult = 0;
-			using (IDbConnection OConnection = Provider.Current.GetConnection(FConfig.ConnectionString)) {
-				using (IDbCommand OCommand = OConnection.CreateCommand()) {
-					OCommand.CommandText = FSqlStatement;
-					foreach (IBaseParam OParam in FParameters) {
-						if (OParam.HasValue) {
-							IDbDataParameter OParameter = OCommand.CreateParameter();
-							OParameter.ParameterName = OParam.ParameterName;
-							OParameter.Value = OParam.Value;
-							OCommand.Parameters.Add(OParameter);
-						}
+			using (IDbCommand OCommand = connection.CreateCommand()) {
+				OCommand.Transaction = transaction;
+				OCommand.CommandText = FSqlStatement;
+				foreach (IBaseParam OParam in FParameters) {
+					if (OParam.HasValue) { /* Is this check really necessary? */
+						OParam.AddParameter(OCommand);						
 					}
-					OConnection.Open();
-					OResult = OCommand.ExecuteNonQuery();
+					else {
+						throw new Exception("Yes, I think it is necessary");
+					}
 				}
+				OResult = OCommand.ExecuteNonQuery();
 			}
 			PostExecute(OResult);
 			return OResult;
 		}
 
-		public void AddParameter(BaseParam param, string columnName) {
+		public virtual void AddParameter(BaseParam param, string columnName) {
 			if ((object)param != null) {
 				param.Initialize(columnName);
 				FParameters.Add(param);
 			}
 		}
 
-		protected abstract void PreExecute();
-		protected abstract void PostExecute(int modifiedCount);
-		protected abstract string PrepareStatement();
-		
-		public string SchemaName {
-			get {
-				return FSchemaName;
-			}
-			set {
-				FSchemaName = value;
-			}
+		protected internal abstract void PreExecute();
+		protected internal abstract void PostExecute(int modifiedCount);
+		protected internal abstract string PrepareStatement();
+
+		/* NOTE: Use Get/Set functions instead of properties to avoid name-clashing with auto-generated properties */
+
+		public List<IBaseParam> GetParameters() {
+			return FParameters;
 		}
 
-		public string TableName {
-			get {
-				return FTableName;
-			}
-			set {
-				FTableName = value;
-			}
+		public string GetSchemaName() {			
+			return FSchemaName;			
+		}
+
+		public void SetSchemaName(string schemaName) {
+			FSchemaName = schemaName;
+		}
+
+		public string GetTableName() {			
+			return FTableName;
+		}
+
+		public void SetTableName(string tableName) {
+			FTableName = tableName;
+		}
+
+		public int GetParameterIndex() {
+			return FParameterIndex;
+		}
+
+		public void SetParameterIndex(int index) {
+			FParameterIndex = index;
+		}
+
+		protected internal SqlineConfig GetSqlineConfig() {
+			return FConfig;
 		}
 	}
 }

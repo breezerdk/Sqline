@@ -1,0 +1,72 @@
+﻿		<#= OMethod.VisibilityString #> <#= OMethod.Result == ResultType.List ? "List<" + OScalarItem.CsType + ">" :  OScalarItem.CsType #> <#= OMethod.Name #>(<#= GetArguments(OMethod, OTransactionSupport) #>) {
+			<# if (OMethod.Result == ResultType.List) { #>
+			List<<#= OScalarItem.CsType #>> OResult = new List<<#= OScalarItem.CsType #>>();
+			<# } else { #>
+			<#= OScalarItem.CsType #> OResult = default(<#= OScalarItem.CsType #>);
+			<# } #>
+			string sql = @"<#= OMethod.Sql.Statement #>";
+			<# if (!OTransactionSupport) { #>
+			using (IDbConnection OConnection = Provider.Current.GetConnection(<#= OItemFile.Configuration.ProjectHandler.SqlineConfig #>.ConnectionString)) {
+			<# } #>
+				using (IDbCommand OCommand = <#= OTransactionSupport ? "connection" : "OConnection" #>.CreateCommand()) {
+					<# if (OTransactionSupport) { #>
+					OCommand.Connection = connection;
+					OCommand.Transaction = transaction;
+					<# } #>
+					OCommand.CommandText = sql;
+					OCommand.CommandType = CommandType.Text;
+					<# if (OMethod.Timeout > 0) { #>
+					OCommand.CommandTimeout = <#= OMethod.Timeout #>;
+					<# } #>
+					<# foreach (Parameter OParameter in OMethod.Parameters) { #>
+					IDbDataParameter OParameter<#= OParameter.Name #> = OCommand.CreateParameter();
+					OParameter<#= OParameter.Name #>.ParameterName = "@<#= OParameter.Name #>";
+					<# if (OParameter.Nullable) { #>
+					OParameter<#= OParameter.Name #>.Value = <#= OParameter.ArgumentName #> ?? (object)DBNull.Value;
+					<# } else { #>
+					OParameter<#= OParameter.Name #>.Value = <#= OParameter.ArgumentName #>;
+					<# } #>
+					OCommand.Parameters.Add(OParameter<#= OParameter.Name #>);
+					<# } #>
+					<# if (!OTransactionSupport) { #>
+					OConnection.Open();
+					<# } #>
+					using (IDataReader OReader = OCommand.ExecuteReader()) {
+						<# if (OScalarItem.Default != null) { #>
+						bool OHasValue = false;
+						<# } #>
+						<#= OMethod.Result == ResultType.List ? "while" :  "if" #> (OReader.Read()) {
+							<#= OScalarItem.CsType #> OScalarItem = OReader.<#= OScalarItem.CsReaderMethod #>;
+							<# if (OScalarItem.Default != null) { #>
+							if (!OHasValue) {
+								OScalarItem = new Func<<#= OScalarItem.CsTypeNonNullable #>>(() => <#= OScalarItem.Default #>)();
+							}
+							<# } #>
+							<# if (OScalarItem.Transform != null) { #>
+							OScalarItem = new Func<<#= OScalarItem.CsType #>, <#= OScalarItem.CsType #>>((value) => <#= OScalarItem.Transform #>)(OScalarItem);
+							<# } #>
+							<# if (OMethod.Result == ResultType.List) { #>
+							<# if (OMethod.Filter != null) { #>
+							if (new Func<<#= OScalarItem.CsType #>, bool>(value => <#= OMethod.Filter #>)(OScalarItem)) {
+								OResult.Add(OScalarItem);
+							}
+							<# } else { #>
+							OResult.Add(OScalarItem);
+							<# } #>
+							<# } #>
+							<# if (OMethod.Result == ResultType.SingleItem) { #>
+							OResult = OScalarItem;
+							<# } #>
+						}
+					}
+				}
+			<# if (!OTransactionSupport) { #>
+			}
+			<# } #>
+			<# if (OMethod.Result == ResultType.List) { #>
+			<# if (OMethod.Sort != null) { #>
+			OResult.Sort((value1, value2) => <#= OMethod.Sort #>);
+			<# } #>
+			<# } #>
+			return OResult;
+		}

@@ -33,21 +33,20 @@ namespace Sqline.VSPackage {
 		}
 
 		private void GenerateViewItems() {
-			string OTemplatePath = FContext.ResolvePath("Sqline/Sqline.CodeGeneration/Templates/ViewItem.tt");
+			string OTemplatePath = FContext.ResolvePath("/Templates/ViewItem.t4");
 			Debug.WriteLine("GenerateViewItems: " + OTemplatePath);
-			Template OTemplate = new Template(OTemplatePath);
+			TemplateOptions OOptions = new TemplateOptions { RemoveWhitespaceStatementLines = true, AssemblyResolveDirectory = FContext.PackageDirectory };
+			Template OTemplate = new Template(OTemplatePath, OOptions);
 			OTemplate.Parameters.Add("Filename", OTemplatePath);
 			OTemplate.Parameters.Add("ItemFilename", FDocument.FullName);
 			OTemplate.Parameters.Add("ProjectDir", ProjectDir);
+			//TODO: Add API object to pass information back to VSPlugin (Info, Warnings, Errors)
 			try {
 				OTemplate.Process();
 				string OContent = OTemplate.InvokeTemplate();
 				string OOutputFile = Path.GetFullPath(Directory + "/" + FileNameWithoutExtension + OTemplate.Extension);
 				WriteToFile(OOutputFile, OContent, OTemplate.Encoding);
 				FOutputFiles.Add(OOutputFile);
-			}
-			catch (Exception ex) {
-				Debug.WriteLine(ex);
 			}
 			finally {
 				if (OTemplate.Debug) {
@@ -59,9 +58,10 @@ namespace Sqline.VSPackage {
 		}
 
 		private void GenerateMethods() {
-			string OTemplatePath = FContext.ResolvePath("Sqline/Sqline.CodeGeneration/Templates/ViewMethods.tt");
+			string OTemplatePath = FContext.ResolvePath("/Templates/ItemMethods.t4");
 			Debug.WriteLine("GenerateViewItems: " + OTemplatePath);
-			Template OTemplate = new Template(OTemplatePath);
+			TemplateOptions OOptions = new TemplateOptions { RemoveWhitespaceStatementLines = true, AssemblyResolveDirectory = FContext.PackageDirectory };
+			Template OTemplate = new Template(OTemplatePath, OOptions);
 			OTemplate.Parameters.Add("Filename", OTemplatePath);
 			OTemplate.Parameters.Add("ItemFilename", FDocument.FullName);
 			OTemplate.Parameters.Add("ProjectDir", ProjectDir);
@@ -71,9 +71,6 @@ namespace Sqline.VSPackage {
 				string OOutputFile = Path.GetFullPath(Directory + "/" + FileNameWithoutExtension + OTemplate.Extension);
 				WriteToFile(OOutputFile, OContent, OTemplate.Encoding);
 				FOutputFiles.Add(OOutputFile);
-			}
-			catch (Exception ex) {
-				Debug.WriteLine(ex);
 			}
 			finally {
 				if (OTemplate.Debug) {

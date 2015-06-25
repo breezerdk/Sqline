@@ -24,9 +24,10 @@ namespace Sqline.VSPackage {
 		}
 
 		public void Generate() {
-			string OTemplatePath = FContext.ResolvePath("Sqline/Sqline.CodeGeneration/Templates/ProjectHandler.tt");
+			string OTemplatePath = FContext.ResolvePath("/Templates/ProjectHandler.t4");
 			Debug.WriteLine("GenerateProjectHandler: " + OTemplatePath);
-			Template OTemplate = new Template(OTemplatePath);
+			TemplateOptions OOptions = new TemplateOptions { RemoveWhitespaceStatementLines = true, AssemblyResolveDirectory = FContext.PackageDirectory };
+			Template OTemplate = new Template(OTemplatePath, OOptions);
 			OTemplate.Parameters.Add("Filename", OTemplatePath);
 			OTemplate.Parameters.Add("ProjectDir", ProjectDir);
 			try {
@@ -35,9 +36,6 @@ namespace Sqline.VSPackage {
 				string OOutputFile = Path.GetFullPath(ProjectDir + "/Sqline.Handler" + OTemplate.Extension);
 				WriteToFile(OOutputFile, OContent, OTemplate.Encoding);
 				FOutputFiles.Add(OOutputFile);
-			}
-			catch (Exception ex) {
-				Debug.WriteLine(ex);
 			}
 			finally {
 				if (OTemplate.Debug) {

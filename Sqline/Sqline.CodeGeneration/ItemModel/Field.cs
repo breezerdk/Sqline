@@ -1,10 +1,12 @@
 ﻿// Authors="Daniel Jonas Møller, Anders Eggers-Krag" License="New BSD License http://sqline.codeplex.com/license"
 using System;
+using System.Diagnostics;
 using System.Xml.Linq;
 using Sqline.ClientFramework.ProviderModel;
 
 namespace Sqline.CodeGeneration.ViewModel {
 	public class Field : ICloneable {
+		private IOwner FOwner;
 		private XElement FElement;
 		private ViewItem FViewItem;
 		private string FName;
@@ -17,29 +19,54 @@ namespace Sqline.CodeGeneration.ViewModel {
 		private string FSource = "queryfield";
 
 		public Field(ViewItem viewitem, XElement element) {
-			FElement = element;
 			FViewItem = viewitem;
+			FOwner = viewitem;
+			FElement = element;
+
 			if (element.Attribute("name") == null) {
-				//TODO: Throw error
+				FOwner.Throw(element, "The required attribute 'name' is missing.");
 			}
+
 			if (element.Attribute("type") == null) {
-				//TODO: Throw error
+				FOwner.Throw(element, "The required attribute 'type' is missing.");
 			}
+
 			FName = element.Attribute("name").Value;
 			FType = element.Attribute("type").Value;
 			FTypeMapping = Provider.Current.GetTypeMapping(FType);
+
 			if (element.Attribute("nullable") != null) {
 				FNullable = element.Attribute("nullable").Value.Equals("true", StringComparison.OrdinalIgnoreCase);
 			}
+
 			if (element.Attribute("default") != null) {
 				FDefault = element.Attribute("default").Value;
 			}
+			else {
+				XElement ODefaultElem = element.Element(ItemFile.XmlNamespace + "default");
+				if (ODefaultElem != null) {
+					FDefault = ODefaultElem.Value;
+				}
+			}
+
+			if (FDefault != null) {
+				FNullable = false;
+			}
+
 			if (element.Attribute("visibility") != null) {
 				FVisibility = element.Attribute("visibility").Value;
 			}
+
 			if (element.Attribute("transform") != null) {
 				FTransform = element.Attribute("transform").Value;
 			}
+			else {
+				XElement OTransformElem = element.Element(ItemFile.XmlNamespace + "transform");
+				if (OTransformElem != null) {
+					FTransform = OTransformElem.Value;
+				}
+			}
+
 			if (element.Attribute("source") != null) {
 				FSource = element.Attribute("source").Value;
 			}
@@ -123,9 +150,6 @@ namespace Sqline.CodeGeneration.ViewModel {
 		public string Visibility {
 			get {
 				return FVisibility;
-			}
-			set {
-				FVisibility = value;
 			}
 		}
 

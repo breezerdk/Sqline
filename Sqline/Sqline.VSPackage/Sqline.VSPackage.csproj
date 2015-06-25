@@ -28,6 +28,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DeployExtension>True</DeployExtension>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -123,6 +124,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AddinContext.cs" />
+    <Compile Include="LogEntry.cs" />
+    <Compile Include="LogWindow.cs" />
     <Compile Include="ProjectHandlerGenerator.cs" />
     <Compile Include="Guids.cs" />
     <Compile Include="DataItemGenerator.cs" />
@@ -148,9 +151,45 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="ItemTemplates\Sqline\Sqline.ConfigFile.zip">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="ItemTemplates\Sqline\Sqline.ItemFile.zip">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="ProjectTemplates\Sqline.Project.zip">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="LICENSE">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
     <None Include="source.extension.vsixmanifest">
       <SubType>Designer</SubType>
     </None>
+    <Content Include="sqline.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Templates\DataItem.t4">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <IncludeInVSIX>true</IncludeInVSIX>
+    </Content>
+    <Content Include="Templates\ProjectHandler.t4">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Templates\ViewItem.t4">
+      <IncludeInVSIX>true</IncludeInVSIX>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Include="Templates\ItemMethods.t4" />
+    <None Include="Templates\ScalarMethod.t4" />
+    <None Include="Templates\ViewMethod.t4" />
+    <None Include="Templates\VoidMethod.t4" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Key.snk" />
@@ -159,6 +198,10 @@
     <Content Include="Resources\Package.ico" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Schemalizer\Schemalizer.Base\Schemalizer.Base.csproj">
+      <Project>{150712dc-ed96-4a96-aa20-648de10533de}</Project>
+      <Name>Schemalizer.Base</Name>
+    </ProjectReference>
     <ProjectReference Include="..\..\Schemalizer\Schemalizer.Model\Schemalizer.Model.csproj">
       <Project>{62d5d7a7-c95c-46b4-bb7d-e57361ab8f7d}</Project>
       <Name>Schemalizer.Model</Name>
@@ -179,16 +222,30 @@
       <Project>{c347571c-cbb9-41e4-883e-df56868b6716}</Project>
       <Name>Sqline.Base</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Sqline.ClientFramework\Sqline.ClientFramework.csproj">
+      <Project>{64ba3e92-7c0c-495a-af06-1976aa2e7b1e}</Project>
+      <Name>Sqline.ClientFramework</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Sqline.CodeGeneration\Sqline.CodeGeneration.csproj">
       <Project>{cf164bbd-2f0d-4719-a8c1-fb25a5ac53a5}</Project>
       <Name>Sqline.CodeGeneration</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <PropertyGroup>
     <UseCodebase>true</UseCodebase>
   </PropertyGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(VSToolsPath)\VSSDK\Microsoft.VsSDK.targets" Condition="'$(VSToolsPath)' != ''" />
+  <PropertyGroup>
+    <PreBuildEvent>xcopy /Y "$(ProjectDir)..\Sqline.CodeGeneration\Templates\*.t4" "$(ProjectDir)Templates"
+xcopy /Y "$(ProjectDir)Assets\Sqline.ConfigFile.zip" "$(ProjectDir)ItemTemplates\Sqline"
+xcopy /Y "$(ProjectDir)Assets\Sqline.ItemFile.zip" "$(ProjectDir)ItemTemplates\Sqline"
+xcopy /Y "$(ProjectDir)Assets\Sqline.Project.zip" "$(ProjectDir)ProjectTemplates"</PreBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

@@ -1,0 +1,82 @@
+﻿		<#= OMethod.VisibilityString #> <#= OMethod.Result == ResultType.List ? "List<" + OViewItem.FullName + ">" :  OViewItem.FullName #> <#= OMethod.Name #>(<#= GetArguments(OMethod, OTransactionSupport) #>) {
+			<# if (OMethod.Result == ResultType.List) { #>
+			List<<#= OViewItem.FullName #>> OResult = new List<<#= OViewItem.FullName #>>();
+			<# } else { #>
+			<#= OViewItem.FullName #> OResult = null;
+			<# } #>
+			string sql = @"<#= OMethod.Sql.Statement #>";
+			<# if (!OTransactionSupport) { #>
+			using (IDbConnection OConnection = Provider.Current.GetConnection(<#= OItemFile.Configuration.ProjectHandler.SqlineConfig #>.ConnectionString)) {
+			<# } #>
+				using (IDbCommand OCommand = <#= OTransactionSupport ? "connection" : "OConnection" #>.CreateCommand()) {
+					<# if (OTransactionSupport) { #>
+					OCommand.Connection = connection;
+					OCommand.Transaction = transaction;
+					<# } #>
+					OCommand.CommandText = sql;
+					OCommand.CommandType = CommandType.Text;
+					<# if (OMethod.Timeout > 0) { #>
+					OCommand.CommandTimeout = <#= OMethod.Timeout #>;
+					<# } #>
+					<# foreach (Parameter OParameter in OMethod.Parameters) { #>
+					IDbDataParameter OParameter<#= OParameter.Name #> = OCommand.CreateParameter();
+					OParameter<#= OParameter.Name #>.ParameterName = "@<#= OParameter.Name #>";
+					<# if (OParameter.Nullable) { #>
+					OParameter<#= OParameter.Name #>.Value = <#= OParameter.ArgumentName #> ?? (object)DBNull.Value;
+					<# } else { #>
+					OParameter<#= OParameter.Name #>.Value = <#= OParameter.ArgumentName #>;
+					<# } #>
+					OCommand.Parameters.Add(OParameter<#= OParameter.Name #>);
+					<# } #>
+					<# if (!OTransactionSupport) { #>
+					OConnection.Open();
+					<# } #>
+					using (IDataReader OReader = OCommand.ExecuteReader()) {
+						<# foreach (Field OField in OMethod.GetFields("queryfield")) { #>
+						int <#= OField.IndexFieldName #> = OReader.GetIndex("<#= OField.Name #>");
+						<# if (OField.Default != null) { #>
+						bool <#= OField.HasValueFieldName #> = false;
+						<# } #>
+						<# } #>
+						<#= OMethod.Result == ResultType.List ? "while" :  "if" #> (OReader.Read()) {
+						<#= OViewItem.FullName #> OViewItem = new <#= OViewItem.FullName #>();
+						OViewItem.PreInitialize();
+						<# foreach (Field OField in OMethod.GetFields("queryfield")) { #>
+							OViewItem.<#= OField.Name #> = OReader.<#= OField.CsReaderMethod #>;
+						<# } #>
+						<# foreach (Field OField in OMethod.Fields) { #>
+							<# if (OField.Default != null) { #>
+							if (!<#= OField.HasValueFieldName #>) {
+								OViewItem.<#= OField.Name #> = new Func<<#= OViewItem.FullName #>, <#= OField.CsTypeNonNullable #>>((item) => <#= OField.Default #>)(OViewItem);
+							}
+							<# } #>
+							<# if (OField.Transform != null) { #>
+							OViewItem.<#= OField.Name #> = new Func<<#= OField.CsTypeNonNullable #>, <#= OViewItem.FullName #>, <#= OField.CsTypeNonNullable #>>((<#= OField.Name #>, item) => <#= OField.Transform #>)((<#= OField.CsTypeNonNullable #>)OViewItem.<#= OField.Name #>, OViewItem);
+							<# } #>
+						<# } #>
+						OViewItem.PostInitialize();
+						<# if (OMethod.Result == ResultType.List) { #>
+							<# if (OMethod.Filter != null) { #>
+							if (new Func<<#= OViewItem.FullName #>, bool>(item => <#= OMethod.Filter #>)(OViewItem)) {
+								OResult.Add(OViewItem);
+							}
+							<# } else { #>
+							OResult.Add(OViewItem);
+							<# } #>
+						<# } #>
+						<# if (OMethod.Result == ResultType.SingleItem) { #>
+						OResult = OViewItem;
+						<# } #>
+						}
+					}
+				}
+			<# if (!OTransactionSupport) { #>
+			}
+			<# } #>
+			<# if (OMethod.Result == ResultType.List) { #>
+			<# if (OMethod.Sort != null) { #>
+			OResult.Sort((item1, item2) => <#= OMethod.Sort #>);
+			<# } #>
+			<# } #>
+			return OResult;
+		}

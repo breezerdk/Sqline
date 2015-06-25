@@ -1,27 +1,42 @@
 ﻿// Authors="Daniel Jonas Møller, Anders Eggers-Krag" License="New BSD License http://sqline.codeplex.com/license"
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using EnvDTE80;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 
 namespace Sqline.VSPackage {
-	internal class AddinContext {
+	public class AddinContext {
 		private DTE2 FApplication;
 		private Package FPackage;
-		private string FAssemblyPath = "";
+		private string FPackageDirectory = "";
 
 		public AddinContext(DTE2 application, Package package) {
 			FApplication = application;
 			FPackage = package;
-			FAssemblyPath = Path.GetDirectoryName(this.GetType().Assembly.Location);
+			FPackageDirectory = Path.GetDirectoryName(this.GetType().Assembly.Location);
+			Debug.WriteLine("FPackageDirectory: " + FPackageDirectory);
 		}
 
 		public String ResolvePath(string path) {
-			if (path[1] != ':') {
-				string sqlinedir = Environment.GetEnvironmentVariable("sqline");
-				return Path.GetFullPath(Path.Combine(sqlinedir, path));
+			path = path.Trim();
+			if (path[1] == ':') {
+				return path;
 			}
+			if (path.StartsWith("/") || path.StartsWith("\\")) {
+				path = path.Remove(0, 1);
+				string templatedir = Environment.GetEnvironmentVariable("sqline_templates");
+				if (templatedir != null) {
+					Debug.WriteLine("Templatedir: " + templatedir);
+					path = Path.GetFullPath(Path.Combine(templatedir, path));
+				}
+				else {
+					path = Path.GetFullPath(Path.Combine(FPackageDirectory, path));
+				}
+			}
+			Debug.WriteLine("Resolved: " + path);
 			return path;
 		}
 
@@ -44,6 +59,12 @@ namespace Sqline.VSPackage {
 		public Package Package {
 			get {
 				return FPackage;
+			}
+		}
+
+		public string PackageDirectory {
+			get {
+				return FPackageDirectory;
 			}
 		}
 	}

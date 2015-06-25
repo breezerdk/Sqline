@@ -4,26 +4,29 @@ using System.Xml.Linq;
 using System.Linq;
 using Sqline.CodeGeneration.ConfigurationModel;
 using System;
+using Sqline.Base;
 
 namespace Sqline.CodeGeneration.ViewModel {
-	public class ViewItem {
+	public class ViewItem : IOwner {
 		private string FName;
+		private IOwner FOwner;
 		private Configuration FConfiguration;
 		private List<Field> FFields = new List<Field>();
-		private List<Method> FMethods = new List<Method>();
+		private List<ViewMethod> FMethods = new List<ViewMethod>();
 		private List<ItemBase> FBases = new List<ItemBase>();
 
-		public ViewItem(Configuration configuration, XElement element) {
+		public ViewItem(IOwner owner, Configuration configuration, XElement element) {
+			FOwner = owner;
 			FConfiguration = configuration;
 			if (element.Attribute("name") == null) {
-				//TODO: Throw error
+				FOwner.Throw(element, "The required attribute 'name' is missing.");
 			}
 			FName = element.Attribute("name").Value;
 			foreach (XElement OField in element.Elements(ItemFile.XmlNamespace + "field")) {
 				FFields.Add(new Field(this, OField));
 			}
 			foreach (XElement OMethod in element.Elements(ItemFile.XmlNamespace + "method")) {
-				FMethods.Add(new Method(FConfiguration, this, OMethod));
+				FMethods.Add(new ViewMethod(this, FConfiguration, OMethod));
 			}
 			foreach (ItemBase OBase in FConfiguration.ViewItems.Bases) {
 				FBases.Add(OBase);
@@ -50,6 +53,10 @@ namespace Sqline.CodeGeneration.ViewModel {
 			return FBases.Any(b => b.Name == key);
 		}
 
+		public void Throw(XObject element, string message) {
+			FOwner.Throw(element, message);
+		}
+
 		public string Name {
 			get {
 				return FName;
@@ -71,7 +78,7 @@ namespace Sqline.CodeGeneration.ViewModel {
 			}
 		}
 
-		public List<Method> Methods {
+		public List<ViewMethod> Methods {
 			get {
 				return FMethods;
 			}

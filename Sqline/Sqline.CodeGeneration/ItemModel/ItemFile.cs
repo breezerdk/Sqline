@@ -3,12 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Xml;
 using System.Xml.Linq;
 using Sqline.Base;
 using Sqline.CodeGeneration.ConfigurationModel;
 
 namespace Sqline.CodeGeneration.ViewModel {
-	public class ItemFile {
+	public class ItemFile : IOwner {
 		private string FFilename;
 		private string FProjectRoot;
 		private string FItemName;
@@ -16,18 +17,18 @@ namespace Sqline.CodeGeneration.ViewModel {
 		private Configuration FConfiguration;
 		private List<ViewItem> FViewItems = new List<ViewItem>();
 		private List<ScalarItem> FScalarItems = new List<ScalarItem>();
+		private List<VoidItem> FVoidItems = new List<VoidItem>();
 
 		public ItemFile(string projectRoot, string filename) {
 			FProjectRoot = projectRoot;
 			FFilename = filename;
-			FDocument = XDocument.Load(filename);
+			FDocument = XDocument.Load(filename, LoadOptions.SetLineInfo);
 			ParseDocument();
 		}
 
 		private void ParseDocument() {
 			ConfigurationSystem OConfigurationSystem = new ConfigurationSystem(FProjectRoot);
 			FileInfo OFileInfo = new FileInfo(FFilename).GetCorrectlyCasedFileInfo();
-			Debug.WriteLine(OFileInfo.Name);
 			FItemName = OFileInfo.GetNameWithoutExt();
 			XElement ORoot = FDocument.Element(XmlNamespace + "items");
 			Configuration OConfiguration = OConfigurationSystem.GetConfigurationFor(OFileInfo.DirectoryName);
@@ -40,11 +41,19 @@ namespace Sqline.CodeGeneration.ViewModel {
 				}
 			}
 			foreach (XElement OViewItem in ORoot.Elements(XmlNamespace + "viewitem")) {
-				FViewItems.Add(new ViewItem(FConfiguration, OViewItem));
+				FViewItems.Add(new ViewItem(this, FConfiguration, OViewItem));
 			}
 			foreach (XElement OScalarItem in ORoot.Elements(XmlNamespace + "scalar")) {
-				FScalarItems.Add(new ScalarItem(FConfiguration, OScalarItem));
+				FScalarItems.Add(new ScalarItem(this, FConfiguration, OScalarItem));
 			}
+			foreach (XElement OVoidItem in ORoot.Elements(XmlNamespace + "void")) {
+				FVoidItems.Add(new VoidItem(this, FConfiguration, OVoidItem));
+			}
+		}
+
+		public void Throw(XObject element, string message) {
+			IXmlLineInfo OInfo = (IXmlLineInfo)element;
+			throw new SqlineException(FFilename, OInfo.LineNumber - 1, OInfo.LinePosition - 1, message);
 		}
 
 		public List<ViewItem> ViewItems {
@@ -56,6 +65,12 @@ namespace Sqline.CodeGeneration.ViewModel {
 		public List<ScalarItem> ScalarItems {
 			get {
 				return FScalarItems;
+			}
+		}
+
+		public List<VoidItem> VoidItems {
+			get {
+				return FVoidItems;
 			}
 		}
 
